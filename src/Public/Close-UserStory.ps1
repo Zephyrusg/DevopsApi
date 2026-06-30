@@ -4,32 +4,47 @@ function Close-UserStory {
         Closes a User Story, auto-closing any open child Tasks first.
     .DESCRIPTION
         Queries all child Tasks that are not yet Closed and calls Close-Task on each,
-        then sets the User Story state to Closed and posts the provided closing notes
-        as a discussion comment.
+        then sets the User Story state to Closed and fills the close notes field when provided.
     .PARAMETER StoryId
         The work item ID of the User Story to close.
     .PARAMETER ClosingNotes
-        Text to post as a discussion comment on the User Story when closing.
+        Optional text to set in the User Story's close notes field when closing.
+    .PARAMETER CloseNotesField
+        Reference name of the Azure DevOps close notes field.
     .EXAMPLE
         Close-UserStory -StoryId 4800 -ClosingNotes "Implemented and tested. Deployed to ACC."
     #>
+    [CmdletBinding()]
     param(
         [Parameter(Mandatory)][int]$StoryId,
-        [Parameter(Mandatory)][string]$ClosingNotes
+        [string]$ClosingNotes,
+        [string]$CloseNotesField = "Custom.CloseNotes"
     )
+    $hasClosingNotes = $PSBoundParameters.ContainsKey('ClosingNotes')
+
     # Close any child tasks that are not yet closed
-    $tasks = az boards query --wiql "SELECT [System.Id], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $StoryId AND [System.State] <> 'Closed' AND [System.TeamProject] = '$($AzureDevOpsConfig.Project)'" `
-        --organization $AzureDevOpsConfig.Org -o json 2>&1 | ConvertFrom-Json
+    $tasks = Invoke-AzJson -Action "Querying child tasks for User Story $StoryId" -Command {
+        az boards query --wiql "SELECT [System.Id], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $StoryId AND [System.State] <> 'Closed' AND [System.TeamProject] = '$($AzureDevOpsConfig.Project)'" `
+            --organization $AzureDevOpsConfig.Org -o json
+    }
     foreach ($task in $tasks) {
         Close-Task -TaskId $task.id
     }
 
     # Close the User Story with closing notes
-    $result = az boards work-item update --id $StoryId `
-        --state "Closed" `
-        --discussion $ClosingNotes `
-        --organization $AzureDevOpsConfig.Org -o json 2>&1 | ConvertFrom-Json
+    $fields = @("System.State=Closed")
+    if ($hasClosingNotes) {
+        $fields += "$CloseNotesField=$ClosingNotes"
+    }
+
+    $result = Invoke-AzJson -Action "Closing User Story $StoryId" -Command {
+        az boards work-item update --id $StoryId `
+            --fields $fields `
+            --organization $AzureDevOpsConfig.Org -o json
+    }
     $state = $result.fields.'System.State'
     Write-Host "User Story $StoryId closed. State: $state" -ForegroundColor Green
-    Write-Host "Closing notes: $ClosingNotes" -ForegroundColor DarkGray
+    if ($hasClosingNotes) {
+        Write-Host "Closing notes: $ClosingNotes" -ForegroundColor DarkGray
+    }
 }

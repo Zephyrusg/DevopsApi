@@ -29,8 +29,10 @@ function Find-UserStory {
     $stateFilter = if ($IncludeClosed) { "AND [System.State] <> 'Removed'" } else { "AND [System.State] <> 'Closed' AND [System.State] <> 'Removed'" }
     $wiql = "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = '$Project' AND [System.WorkItemType] = 'User Story' $stateFilter ORDER BY [System.ChangedDate] DESC"
 
-    $stories = az boards query --wiql $wiql `
-        --organization $Org --project $Project -o json 2>&1 | ConvertFrom-Json
+    $stories = Invoke-AzJson -Action "Finding User Stories matching '$Query'" -Command {
+        az boards query --wiql $wiql `
+            --organization $Org --project $Project -o json
+    }
 
     if (-not $stories -or $stories.Count -eq 0) {
         Write-Host "No User Stories found in project." -ForegroundColor Yellow

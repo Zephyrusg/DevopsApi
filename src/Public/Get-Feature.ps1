@@ -28,8 +28,10 @@ function Get-Feature {
         [string]$Project = $AzureDevOpsConfig.Project
     )
 
-    $item = az boards work-item show --id $FeatureId `
-        --organization $Org -o json 2>&1 | ConvertFrom-Json
+    $item = Invoke-AzJson -Action "Getting Feature $FeatureId" -Command {
+        az boards work-item show --id $FeatureId `
+            --organization $Org -o json
+    }
 
     if (-not $item) { Write-Error "Work item $FeatureId not found."; return }
 
@@ -39,8 +41,10 @@ function Get-Feature {
     $assignedName = if ($assigned -and $assigned.displayName) { $assigned.displayName } elseif ($assigned) { $assigned } else { $null }
 
     # Child User Stories
-    $storyItems = az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints] FROM WorkItems WHERE [System.WorkItemType] = 'User Story' AND [System.Parent] = $FeatureId AND [System.TeamProject] = '$Project'" `
-        --organization $Org --project $Project -o json 2>&1 | ConvertFrom-Json
+    $storyItems = Invoke-AzJson -Action "Querying User Stories for Feature $FeatureId" -Command {
+        az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints] FROM WorkItems WHERE [System.WorkItemType] = 'User Story' AND [System.Parent] = $FeatureId AND [System.TeamProject] = '$Project'" `
+            --organization $Org --project $Project -o json
+    }
 
     $userStories = @()
     if ($storyItems) {

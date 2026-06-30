@@ -25,8 +25,10 @@ function Get-WorkItem {
         [string]$Project = $AzureDevOpsConfig.Project
     )
 
-    $item = az boards work-item show --id $Id `
-        --organization $Org -o json 2>&1 | ConvertFrom-Json
+    $item = Invoke-AzJson -Action "Getting Work Item $Id" -Command {
+        az boards work-item show --id $Id `
+            --organization $Org -o json
+    }
 
     if (-not $item) { Write-Error "Work item $Id not found."; return }
 

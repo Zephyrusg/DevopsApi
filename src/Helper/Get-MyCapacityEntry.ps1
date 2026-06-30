@@ -5,10 +5,10 @@ function Get-MyCapacityEntry {
         [string]$Project = $AzureDevOpsConfig.Project,
         [string]$Team = $AzureDevOpsConfig.Team
     )
-    $sprintRaw = az boards iteration team list --team $Team --timeframe current `
-        --organization $Org --project $Project -o json 2>&1
-    if ($LASTEXITCODE -ne 0) { Write-Error "Could not list iterations: $sprintRaw"; return $null }
-    $sprint = $sprintRaw | ConvertFrom-Json | Select-Object -First 1
+    $sprint = Invoke-AzJson -Action "Getting current sprint for team '$Team'" -Command {
+        az boards iteration team list --team $Team --timeframe current `
+            --organization $Org --project $Project -o json
+    } | Select-Object -First 1
     if (-not $sprint) { Write-Error "Could not determine current sprint."; return $null }
 
     $teamEncoded = [Uri]::EscapeDataString($Team)

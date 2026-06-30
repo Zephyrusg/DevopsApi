@@ -32,8 +32,10 @@ function Get-OpenUserStoriesByTag {
     Write-Host "`nProject: $project" -ForegroundColor Cyan
     Write-Host "Tag filter: $Tag" -ForegroundColor Cyan
 
-    $stories = az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.WorkItemType] = 'User Story' AND [System.State] <> 'Closed' AND [System.State] <> 'Removed' AND [System.Tags] CONTAINS '$safeTag' ORDER BY [System.Id]" `
-        --organization $org --project $project -o json 2>&1 | ConvertFrom-Json
+    $stories = Invoke-AzJson -Action "Getting open User Stories with tag '$Tag'" -Command {
+        az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.WorkItemType] = 'User Story' AND [System.State] <> 'Closed' AND [System.State] <> 'Removed' AND [System.Tags] CONTAINS '$safeTag' ORDER BY [System.Id]" `
+            --organization $org --project $project -o json
+    }
 
     if (-not $stories -or $stories.Count -eq 0) {
         Write-Host "No open User Stories found with tag '$Tag'." -ForegroundColor Yellow

@@ -31,8 +31,10 @@ function Get-UserStory {
         [string]$Project = $AzureDevOpsConfig.Project
     )
 
-    $item = az boards work-item show --id $StoryId `
-        --organization $Org -o json 2>&1 | ConvertFrom-Json
+    $item = Invoke-AzJson -Action "Getting User Story $StoryId" -Command {
+        az boards work-item show --id $StoryId `
+            --organization $Org -o json
+    }
 
     if (-not $item) { Write-Error "Work item $StoryId not found."; return }
 
@@ -41,8 +43,10 @@ function Get-UserStory {
     $assigned = $f.'System.AssignedTo'
     $assignedName = if ($assigned -and $assigned.displayName) { $assigned.displayName } elseif ($assigned) { $assigned } else { $null }
 
-    $taskItems = az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.OriginalEstimate], [Microsoft.VSTS.Scheduling.RemainingWork], [Microsoft.VSTS.Scheduling.CompletedWork] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $StoryId AND [System.TeamProject] = '$Project'" `
-        --organization $Org --project $Project -o json 2>&1 | ConvertFrom-Json
+    $taskItems = Invoke-AzJson -Action "Querying Tasks for User Story $StoryId" -Command {
+        az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.OriginalEstimate], [Microsoft.VSTS.Scheduling.RemainingWork], [Microsoft.VSTS.Scheduling.CompletedWork] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $StoryId AND [System.TeamProject] = '$Project'" `
+            --organization $Org --project $Project -o json
+    }
 
     $tasks = @()
     if ($taskItems) {

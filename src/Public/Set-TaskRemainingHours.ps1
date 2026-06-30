@@ -17,8 +17,10 @@ function Set-TaskRemainingHours {
         [Parameter(Mandatory)][int]$TaskId,
         [Parameter(Mandatory)][double]$HoursToDeduct
     )
-    $item = az boards work-item show --id $TaskId `
-        --organization $AzureDevOpsConfig.Org -o json 2>&1 | ConvertFrom-Json
+    $item = Invoke-AzJson -Action "Getting Task $TaskId" -Command {
+        az boards work-item show --id $TaskId `
+            --organization $AzureDevOpsConfig.Org -o json
+    }
     $remaining = if ($null -ne $item.fields.'Microsoft.VSTS.Scheduling.RemainingWork') { $item.fields.'Microsoft.VSTS.Scheduling.RemainingWork' } else { 0 }
     $completed = if ($null -ne $item.fields.'Microsoft.VSTS.Scheduling.CompletedWork') { $item.fields.'Microsoft.VSTS.Scheduling.CompletedWork' } else { 0 }
 
@@ -33,10 +35,12 @@ function Set-TaskRemainingHours {
     }
     $newCompleted = $completed + $HoursToDeduct
 
-    $result = az boards work-item update --id $TaskId `
-        --fields "Microsoft.VSTS.Scheduling.RemainingWork=$newRemaining" `
-        "Microsoft.VSTS.Scheduling.CompletedWork=$newCompleted" `
-        --organization $AzureDevOpsConfig.Org -o json 2>&1 | ConvertFrom-Json
+    $result = Invoke-AzJson -Action "Updating remaining hours for Task $TaskId" -Command {
+        az boards work-item update --id $TaskId `
+            --fields "Microsoft.VSTS.Scheduling.RemainingWork=$newRemaining" `
+            "Microsoft.VSTS.Scheduling.CompletedWork=$newCompleted" `
+            --organization $AzureDevOpsConfig.Org -o json
+    }
     $actualRem = $result.fields.'Microsoft.VSTS.Scheduling.RemainingWork'
     $actualComp = $result.fields.'Microsoft.VSTS.Scheduling.CompletedWork'
     Write-Host ("Task {0}: Remaining {1} h → {2} h  |  Spent {3} h → {4} h  (-{5} h)" -f $TaskId, $remaining, $actualRem, $completed, $actualComp, $HoursToDeduct) -ForegroundColor Cyan

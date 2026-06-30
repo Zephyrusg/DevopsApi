@@ -14,14 +14,18 @@ function Close-Task {
     param(
         [Parameter(Mandatory)][int]$TaskId
     )
-    $item = az boards work-item show --id $TaskId `
-        --organization $AzureDevOpsConfig.Org -o json 2>&1 | ConvertFrom-Json
+    $item = Invoke-AzJson -Action "Getting Task $TaskId" -Command {
+        az boards work-item show --id $TaskId `
+            --organization $AzureDevOpsConfig.Org -o json
+    }
     $remaining = if ($null -ne $item.fields.'Microsoft.VSTS.Scheduling.RemainingWork') { $item.fields.'Microsoft.VSTS.Scheduling.RemainingWork' } else { 0 }
     $completed = if ($null -ne $item.fields.'Microsoft.VSTS.Scheduling.CompletedWork') { $item.fields.'Microsoft.VSTS.Scheduling.CompletedWork' } else { 0 }
 
-    az boards work-item update --id $TaskId `
-        --fields "System.State=Closed" `
-        "Microsoft.VSTS.Scheduling.RemainingWork=0" `
-        --organization $AzureDevOpsConfig.Org -o json 2>&1 | Out-Null
+    Invoke-AzJson -Action "Closing Task $TaskId" -Command {
+        az boards work-item update --id $TaskId `
+            --fields "System.State=Closed" `
+            "Microsoft.VSTS.Scheduling.RemainingWork=0" `
+            --organization $AzureDevOpsConfig.Org -o json
+    } | Out-Null
     Write-Host ("Task {0} closed  |  Spent: {1} h  |  Remaining {2} h discarded" -f $TaskId, $completed, $remaining) -ForegroundColor Green
 }
