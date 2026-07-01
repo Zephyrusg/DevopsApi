@@ -22,6 +22,22 @@ function Close-UserStory {
     )
     $hasClosingNotes = $PSBoundParameters.ContainsKey('ClosingNotes')
 
+    $story = Invoke-AzJson -Action "Getting User Story $StoryId" -Command {
+        az boards work-item show --id $StoryId `
+            --organization $AzureDevOpsConfig.Org -o json
+    }
+
+    $workItemType = $story.fields.'System.WorkItemType'
+    if ($workItemType -ne 'User Story') {
+        $parentHint = ""
+        if ($story.fields.'System.Parent') {
+            $parentHint = " Parent work item: $($story.fields.'System.Parent')."
+        }
+
+        Write-Error "Work item $StoryId is '$workItemType', not 'User Story'.$parentHint"
+        return
+    }
+
     # Close any child tasks that are not yet closed
     $tasks = Invoke-AzJson -Action "Querying child tasks for User Story $StoryId" -Command {
         az boards query --wiql "SELECT [System.Id], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $StoryId AND [System.State] <> 'Closed' AND [System.TeamProject] = '$($AzureDevOpsConfig.Project)'" `

@@ -18,6 +18,13 @@ function Close-Task {
         az boards work-item show --id $TaskId `
             --organization $AzureDevOpsConfig.Org -o json
     }
+
+    $workItemType = $item.fields.'System.WorkItemType'
+    if ($workItemType -ne 'Task') {
+        Write-Error "Work item $TaskId is '$workItemType', not 'Task'."
+        return
+    }
+
     $remaining = if ($null -ne $item.fields.'Microsoft.VSTS.Scheduling.RemainingWork') { $item.fields.'Microsoft.VSTS.Scheduling.RemainingWork' } else { 0 }
     $completed = if ($null -ne $item.fields.'Microsoft.VSTS.Scheduling.CompletedWork') { $item.fields.'Microsoft.VSTS.Scheduling.CompletedWork' } else { 0 }
 

@@ -5,7 +5,8 @@ function Get-MySprintItems {
     .DESCRIPTION
         Queries Azure DevOps for User Stories assigned to you in the current sprint iteration.
         With IncludeUnassigned it also includes unassigned User Stories and Bugs. Then for
-        each item it fetches child Tasks and displays state, original estimate and remaining work.
+        each item it fetches child Tasks and displays assignee, state, original estimate
+        and remaining work.
     .PARAMETER Org
         Azure DevOps organisation URL. Defaults to the active config.
     .PARAMETER Project
@@ -68,7 +69,7 @@ function Get-MySprintItems {
 
         # Get child Tasks
         $tasks = Invoke-AzJson -Action "Getting Tasks for $type $id" -AllowEmpty -Command {
-            az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.Tags], [Microsoft.VSTS.Scheduling.OriginalEstimate], [Microsoft.VSTS.Scheduling.RemainingWork] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $id AND [System.TeamProject] = '$project'" `
+            az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.Tags], [Microsoft.VSTS.Scheduling.OriginalEstimate], [Microsoft.VSTS.Scheduling.RemainingWork] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $id AND [System.TeamProject] = '$project'" `
                 --organization $org --project $project -o json
         }
 
@@ -81,13 +82,15 @@ function Get-MySprintItems {
                 $tid = $t.id
                 $ttitle = $t.fields.'System.Title'
                 $tstate = $t.fields.'System.State'
+                $tassigned = $t.fields.'System.AssignedTo'
+                $tassignedName = if ($tassigned -and $tassigned.displayName) { $tassigned.displayName } elseif ($tassigned) { $tassigned } else { "Unassigned" }
                 $estimated = $t.fields.'Microsoft.VSTS.Scheduling.OriginalEstimate'
                 $remaining = $t.fields.'Microsoft.VSTS.Scheduling.RemainingWork'
                 $ttags = $t.fields.'System.Tags'
                 $estStr = if ($null -ne $estimated) { "${estimated}h" } else { "  -  " }
                 $remStr = if ($null -ne $remaining) { "${remaining}h" } else { "  -  " }
                 $ttagStr = if ($ttags) { "  [Tags: $ttags]" } else { "" }
-                Write-Host ("  [Task {0}] {1,-55} State: {2,-10}  Est: {3,6}  Rem: {4,6}{5}" -f $tid, $ttitle, $tstate, $estStr, $remStr, $ttagStr)
+                Write-Host ("  [Task {0}] {1,-55} Assigned: {2,-24} State: {3,-10}  Est: {4,6}  Rem: {5,6}{6}" -f $tid, $ttitle, $tassignedName, $tstate, $estStr, $remStr, $ttagStr)
             }
         }
     }
