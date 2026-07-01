@@ -1,9 +1,9 @@
 function Close-Task {
     <#
     .SYNOPSIS
-        Closes a Task, zeroing remaining work without touching CompletedWork.
+        Closes a Task, clearing remaining work without touching CompletedWork.
     .DESCRIPTION
-        Sets the task state to Closed and RemainingWork to 0.
+        Sets the task state to Closed and clears RemainingWork.
         CompletedWork is left as-is, reflecting actual time spent.
         If you want to log additional time before closing, use Set-TaskRemainingHours first.
     .PARAMETER TaskId
@@ -31,8 +31,8 @@ function Close-Task {
     Invoke-AzJson -Action "Closing Task $TaskId" -Command {
         az boards work-item update --id $TaskId `
             --fields "System.State=Closed" `
-            "Microsoft.VSTS.Scheduling.RemainingWork=0" `
+            "Microsoft.VSTS.Scheduling.RemainingWork=" `
             --organization $AzureDevOpsConfig.Org -o json
     } | Out-Null
-    Write-Host ("Task {0} closed  |  Spent: {1} h  |  Remaining {2} h discarded" -f $TaskId, $completed, $remaining) -ForegroundColor Green
+    Write-Host ("Task {0} closed  |  Spent: {1} h  |  Remaining {2} h cleared" -f $TaskId, $completed, $remaining) -ForegroundColor Green
 }

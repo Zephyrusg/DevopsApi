@@ -3,10 +3,10 @@ function Get-MySprintItems {
     .SYNOPSIS
         Lists your User Stories for the current sprint.
     .DESCRIPTION
-        Queries Azure DevOps for User Stories assigned to you in the current sprint iteration.
-        With IncludeUnassigned it also includes unassigned User Stories and Bugs. Then for
-        each item it fetches child Tasks and displays assignee, state, original estimate
-        and remaining work.
+        Queries Azure DevOps for User Stories assigned to you in the current sprint iteration,
+        plus User Stories that have at least one Task assigned to you. With IncludeUnassigned it
+        also includes unassigned User Stories and Bugs. Then for each item it fetches child Tasks
+        and displays assignee, state, original estimate and remaining work.
     .PARAMETER Org
         Azure DevOps organisation URL. Defaults to the active config.
     .PARAMETER Project
@@ -49,11 +49,39 @@ function Get-MySprintItems {
             --organization $org --project $project -o json
     }
 
+    $workItems = @($workItems)
+
+    # Add User Stories where one of my Tasks is assigned to me, even if the User Story is assigned elsewhere.
+    $myTasks = Invoke-AzJson -Action "Getting sprint Tasks assigned to me for '$($sprint.path)'" -AllowEmpty -Command {
+        az boards query --wiql "SELECT [System.Id], [System.Parent] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.IterationPath] = '$($sprint.path)' AND [System.WorkItemType] = 'Task' AND [System.AssignedTo] = @me AND [System.State] <> 'Closed' AND [System.State] <> 'Removed'" `
+            --organization $org --project $project -o json
+    }
+
+    $parentIds = @($myTasks | ForEach-Object { $_.fields.'System.Parent' } | Where-Object { $_ } | Sort-Object -Unique)
+    if ($parentIds.Count -gt 0) {
+        $existingIds = @($workItems | ForEach-Object { $_.id })
+        $missingParentIds = @($parentIds | Where-Object { $_ -notin $existingIds })
+
+        if ($missingParentIds.Count -gt 0) {
+            $parentIdList = $missingParentIds -join ','
+            $taskParentStories = Invoke-AzJson -Action "Getting User Stories for my Tasks" -AllowEmpty -Command {
+                az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.Id] IN ($parentIdList) AND [System.WorkItemType] = 'User Story' AND [System.State] <> 'Closed' AND [System.State] <> 'Removed' ORDER BY [System.Id]" `
+                    --organization $org --project $project -o json
+            }
+
+            if ($taskParentStories) {
+                $workItems += @($taskParentStories)
+            }
+        }
+    }
+
     if (-not $workItems -or $workItems.Count -eq 0) {
         $doneMessage = if ($IncludeUnassigned) { "No more extra unassigned work for this sprint." } else { "All work is done for this sprint." }
         Write-Host $doneMessage -ForegroundColor Green
         return
     }
+
+    $workItems = @($workItems | Sort-Object { $_.fields.'System.WorkItemType' }, id -Unique)
 
     foreach ($workItem in $workItems) {
         $id = $workItem.id
