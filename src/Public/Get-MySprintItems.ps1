@@ -1,10 +1,10 @@
 function Get-MySprintItems {
     <#
     .SYNOPSIS
-        Lists your User Stories for the current sprint.
+        Lists your User Stories and Bugs for the current sprint.
     .DESCRIPTION
-        Queries Azure DevOps for User Stories assigned to you in the current sprint iteration,
-        plus User Stories that have at least one Task assigned to you. With IncludeUnassigned it
+        Queries Azure DevOps for User Stories and Bugs assigned to you in the current sprint iteration,
+        plus User Stories and Bugs that have at least one Task assigned to you. With IncludeUnassigned it
         also includes unassigned User Stories and Bugs. Then for each item it fetches child Tasks
         and displays assignee, state, original estimate and remaining work.
     .PARAMETER Org
@@ -37,13 +37,13 @@ function Get-MySprintItems {
     Write-Host "`nCurrent sprint: $($sprint.path)" -ForegroundColor Cyan
 
     $workItemFilter = if ($IncludeUnassigned) {
-        "(([System.WorkItemType] = 'User Story' AND [System.AssignedTo] = @me) OR ([System.WorkItemType] IN ('User Story', 'Bug') AND [System.AssignedTo] = ''))"
+        "(([System.WorkItemType] IN ('User Story', 'Bug') AND [System.AssignedTo] = @me) OR ([System.WorkItemType] IN ('User Story', 'Bug') AND [System.AssignedTo] = ''))"
     }
     else {
-        "([System.WorkItemType] = 'User Story' AND [System.AssignedTo] = @me)"
+        "([System.WorkItemType] IN ('User Story', 'Bug') AND [System.AssignedTo] = @me)"
     }
 
-    # Get my User Stories, optionally including unassigned User Stories and Bugs in this sprint
+    # Get my User Stories and Bugs, optionally including unassigned items in this sprint
     $workItems = Invoke-AzJson -Action "Getting sprint work items for '$($sprint.path)'" -AllowEmpty -Command {
         az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.IterationPath] = '$($sprint.path)' AND [System.State] <> 'Closed' AND [System.State] <> 'Removed' AND $workItemFilter ORDER BY [System.WorkItemType], [System.Id]" `
             --organization $org --project $project -o json
@@ -51,7 +51,7 @@ function Get-MySprintItems {
 
     $workItems = @($workItems)
 
-    # Add User Stories where one of my Tasks is assigned to me, even if the User Story is assigned elsewhere.
+    # Add User Stories and Bugs where one of my Tasks is assigned to me, even if the parent item is assigned elsewhere.
     $myTasks = Invoke-AzJson -Action "Getting sprint Tasks assigned to me for '$($sprint.path)'" -AllowEmpty -Command {
         az boards query --wiql "SELECT [System.Id], [System.Parent] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.IterationPath] = '$($sprint.path)' AND [System.WorkItemType] = 'Task' AND [System.AssignedTo] = @me AND [System.State] <> 'Closed' AND [System.State] <> 'Removed'" `
             --organization $org --project $project -o json
@@ -64,8 +64,8 @@ function Get-MySprintItems {
 
         if ($missingParentIds.Count -gt 0) {
             $parentIdList = $missingParentIds -join ','
-            $taskParentStories = Invoke-AzJson -Action "Getting User Stories for my Tasks" -AllowEmpty -Command {
-                az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.Id] IN ($parentIdList) AND [System.WorkItemType] = 'User Story' AND [System.State] <> 'Closed' AND [System.State] <> 'Removed' ORDER BY [System.Id]" `
+            $taskParentStories = Invoke-AzJson -Action "Getting parent items for my Tasks" -AllowEmpty -Command {
+                az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.Tags] FROM WorkItems WHERE [System.TeamProject] = '$project' AND [System.Id] IN ($parentIdList) AND [System.WorkItemType] IN ('User Story', 'Bug') AND [System.State] <> 'Closed' AND [System.State] <> 'Removed' ORDER BY [System.Id]" `
                     --organization $org --project $project -o json
             }
 
