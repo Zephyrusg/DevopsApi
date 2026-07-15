@@ -28,8 +28,10 @@ function Set-TaskState {
         return
     }
 
-    $item = az boards work-item show --id $TaskId `
-        --organization $Org -o json 2>&1 | ConvertFrom-Json
+    $item = Invoke-AzJson -Action "Getting work item $TaskId" -Command {
+        az boards work-item show --id $TaskId `
+            --organization $Org -o json
+    }
 
     if (-not $item) {
         Write-Error "Work item $TaskId not found."
@@ -48,9 +50,11 @@ function Set-TaskState {
         return
     }
 
-    $result = az boards work-item update --id $TaskId `
-        --fields "System.State=$State" `
-        --organization $Org -o json 2>&1 | ConvertFrom-Json
+    $result = Invoke-AzJson -Action "Changing Task $TaskId state from '$previousState' to '$State'" -Command {
+        az boards work-item update --id $TaskId `
+            --fields "System.State=$State" `
+            --organization $Org -o json
+    }
 
     $actualState = $result.fields.'System.State'
     Write-Host ("Task {0}: State {1} -> {2}" -f $TaskId, $previousState, $actualState) -ForegroundColor Cyan
