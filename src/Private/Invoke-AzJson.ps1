@@ -6,6 +6,8 @@ function Invoke-AzJson {
         [switch]$AllowEmpty
     )
 
+    # A caller's WhatIf must not disable stderr redirection or temp-file cleanup.
+    $WhatIfPreference = $false
     $errorFile = [System.IO.Path]::GetTempFileName()
     try {
         $output = & $Command 2> $errorFile
@@ -34,6 +36,6 @@ function Invoke-AzJson {
         }
     }
     finally {
-        Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $errorFile -Force -ErrorAction SilentlyContinue -WhatIf:$false
     }
 }
