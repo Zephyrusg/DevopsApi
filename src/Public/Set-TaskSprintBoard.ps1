@@ -1,4 +1,4 @@
-function Set-TaskBoardColumn {
+function Set-TaskSprintBoard {
     <#
     .SYNOPSIS
         Moves a Task to a column on the current sprint Taskboard.
@@ -12,9 +12,9 @@ function Set-TaskBoardColumn {
     .PARAMETER Column
         The Taskboard column name, for example Active, Waiting, Review or Closed.
     .EXAMPLE
-        Set-TaskBoardColumn -TaskId 29461 -Column Review
+        Set-TaskSprintBoard -TaskId 29461 -Column Review
     .EXAMPLE
-        Set-TaskBoardColumn -TaskId 29461 -Column Review -WhatIf
+        Set-TaskSprintBoard -TaskId 29461 -Column Review -WhatIf
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
