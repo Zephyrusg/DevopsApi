@@ -43,7 +43,7 @@ function Get-UserStory {
     $assigned = $f.'System.AssignedTo'
     $assignedName = if ($assigned -and $assigned.displayName) { $assigned.displayName } elseif ($assigned) { $assigned } else { $null }
 
-    $taskItems = Invoke-AzJson -Action "Querying Tasks for User Story $StoryId" -Command {
+    $taskItems = Invoke-AzJson -Action "Querying Tasks for User Story $StoryId" -AllowEmpty -Command {
         az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.OriginalEstimate], [Microsoft.VSTS.Scheduling.RemainingWork], [Microsoft.VSTS.Scheduling.CompletedWork] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $StoryId AND [System.TeamProject] = '$Project'" `
             --organization $Org --project $Project -o json
     }

@@ -41,7 +41,7 @@ function Get-Feature {
     $assignedName = if ($assigned -and $assigned.displayName) { $assigned.displayName } elseif ($assigned) { $assigned } else { $null }
 
     # Child User Stories
-    $storyItems = Invoke-AzJson -Action "Querying User Stories for Feature $FeatureId" -Command {
+    $storyItems = Invoke-AzJson -Action "Querying User Stories for Feature $FeatureId" -AllowEmpty -Command {
         az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [Microsoft.VSTS.Scheduling.StoryPoints] FROM WorkItems WHERE [System.WorkItemType] = 'User Story' AND [System.Parent] = $FeatureId AND [System.TeamProject] = '$Project'" `
             --organization $Org --project $Project -o json
     }

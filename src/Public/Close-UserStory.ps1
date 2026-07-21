@@ -39,10 +39,11 @@ function Close-UserStory {
     }
 
     # Close any child tasks that are not yet closed
-    $tasks = Invoke-AzJson -Action "Querying child tasks for User Story $StoryId" -Command {
+    $tasks = Invoke-AzJson -Action "Querying child tasks for User Story $StoryId" -AllowEmpty -Command {
         az boards query --wiql "SELECT [System.Id], [System.State] FROM WorkItems WHERE [System.WorkItemType] = 'Task' AND [System.Parent] = $StoryId AND [System.State] <> 'Closed' AND [System.TeamProject] = '$($AzureDevOpsConfig.Project)'" `
             --organization $AzureDevOpsConfig.Org -o json
     }
+    $tasks = @($tasks | Where-Object { $_ -and $_.id })
     foreach ($task in $tasks) {
         Close-Task -TaskId $task.id
     }
