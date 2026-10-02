@@ -21,6 +21,8 @@ function New-WorkItem {
         ID of a work item to link as parent.
     .PARAMETER PredecessorId
         ID of a work item to link as predecessor (the new work item depends on it).
+    .PARAMETER SuccessorId
+        ID of a work item to link as successor (that work item depends on the new one).
     .PARAMETER Org
         Azure DevOps organisation URL. Defaults to the active config.
     .PARAMETER Project
@@ -50,6 +52,9 @@ function New-WorkItem {
 
         [ValidateRange(1, [int]::MaxValue)]
         [int]$PredecessorId,
+
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]$SuccessorId,
 
         [string]$Org = $AzureDevOpsConfig.Org,
         [string]$Project = $AzureDevOpsConfig.Project
@@ -95,6 +100,13 @@ function New-WorkItem {
     if ($PredecessorId) {
         $null = Invoke-AzJson -Action "Linking $Type $($item.id) to predecessor $PredecessorId" -Command {
             az boards work-item relation add --id $item.id --relation-type predecessor --target-id $PredecessorId `
+                --organization $Org -o json
+        }
+    }
+
+    if ($SuccessorId) {
+        $null = Invoke-AzJson -Action "Linking $Type $($item.id) to successor $SuccessorId" -Command {
+            az boards work-item relation add --id $item.id --relation-type successor --target-id $SuccessorId `
                 --organization $Org -o json
         }
     }
